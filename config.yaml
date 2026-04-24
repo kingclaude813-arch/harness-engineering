@@ -1,0 +1,98 @@
+# ============================================================
+# Harness Engineering - 프로젝트 설정
+# ============================================================
+
+project:
+  name: harness-engineering
+  version: "0.1.0"
+  description: "AI 기반 자동화 엔지니어링 허브"
+
+# ─── LLM 라우팅 규칙 ─────────────────────────────────────────
+llm:
+  # 기본 라우팅: 토큰 수 기준
+  route_by_tokens:
+    threshold: 500          # 500 토큰 미만 → Gemma
+
+  # 작업 유형별 강제 할당
+  force_claude:
+    - architecture_design
+    - security_review
+    - complex_code_generation
+    - api_design
+    - performance_analysis
+
+  force_gemma:
+    - text_summary
+    - label_classification
+    - simple_qa
+    - commit_message
+    - changelog_entry
+    - typo_fix
+
+  claude:
+    model: "claude-sonnet-4-6"
+    max_tokens: 8192
+    temperature: 0.3
+
+  gemma:
+    model: "gemma3:4b"
+    base_url: "http://localhost:11434"
+    temperature: 0.2
+    timeout: 60
+
+# ─── GitHub 자동화 ───────────────────────────────────────────
+github:
+  auto_label_issues: true
+  auto_assign_reviewers: false
+  branch_protection:
+    main: true
+    develop: true
+  issue_templates:
+    - bug_report
+    - feature_request
+    - task
+
+# ─── Discord 알림 설정 ───────────────────────────────────────
+discord:
+  notifications:
+    on_push: true
+    on_pr_open: true
+    on_pr_merge: true
+    on_issue_create: true
+    on_issue_close: false
+    on_release: true
+    on_workflow_fail: true
+
+  # 알림 색상 (HEX)
+  colors:
+    push: 0x5865F2        # Discord 블루
+    pr_open: 0x57F287     # 초록
+    pr_merge: 0x9B59B6    # 보라
+    issue: 0xFEE75C       # 노랑
+    error: 0xED4245       # 빨강
+
+# ─── 자동화 스케줄 ───────────────────────────────────────────
+scheduler:
+  weekly_report:
+    enabled: true
+    cron: "0 9 * * MON"    # 매주 월요일 오전 9시
+
+  dependency_check:
+    enabled: true
+    cron: "0 2 * * *"      # 매일 오전 2시
+
+  stale_issue_check:
+    enabled: true
+    cron: "0 10 * * FRI"   # 매주 금요일 오전 10시
+    stale_days: 14
+
+# ─── 자동 문서화 ─────────────────────────────────────────────
+docs:
+  auto_generate: true
+  output_dir: "docs/"
+  formats:
+    - markdown
+  include:
+    - api_reference
+    - changelog
+    - architecture

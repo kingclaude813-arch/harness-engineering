@@ -1,0 +1,125 @@
+name: Discord 알림
+
+# Push, PR, Issue, Release 이벤트 시 Discord 통보
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    types: [opened, closed, reopened]
+  issues:
+    types: [opened]
+  release:
+    types: [published]
+  workflow_run:
+    workflows: ["*"]
+    types: [completed]
+
+jobs:
+  # ── Push 알림 ──────────────────────────────────────────────
+  notify-push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord Push 알림
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "📦 Push to `${{ github.ref_name }}`"
+          description: |
+            **저장소**: ${{ github.repository }}
+            **브랜치**: `${{ github.ref_name }}`
+            **푸셔**: ${{ github.actor }}
+            **커밋**: [${{ github.sha }}](${{ github.event.compare }})
+
+            ${{ join(github.event.commits.*.message, '\n• ') }}
+          color: 0x5865F2
+          username: "Harness Bot"
+          url: ${{ github.event.compare }}
+
+  # ── PR 알림 ────────────────────────────────────────────────
+  notify-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord PR 오픈 알림
+        if: github.event.action == 'opened' || github.event.action == 'reopened'
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "🔀 PR #${{ github.event.number }}: ${{ github.event.pull_request.title }}"
+          description: |
+            **저장소**: ${{ github.repository }}
+            **작성자**: ${{ github.actor }}
+            **브랜치**: `${{ github.head_ref }}` → `${{ github.base_ref }}`
+          color: 0x57F287
+          username: "Harness Bot"
+          url: ${{ github.event.pull_request.html_url }}
+
+      - name: Discord PR 머지 알림
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "✅ PR 머지됨: ${{ github.event.pull_request.title }}"
+          description: |
+            **저장소**: ${{ github.repository }}
+            **머지한 사람**: ${{ github.actor }}
+            **브랜치**: `${{ github.head_ref }}` → `${{ github.base_ref }}`
+          color: 0x9B59B6
+          username: "Harness Bot"
+          url: ${{ github.event.pull_request.html_url }}
+
+  # ── 이슈 알림 ──────────────────────────────────────────────
+  notify-issue:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord 이슈 알림
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "🐛 Issue #${{ github.event.issue.number }}: ${{ github.event.issue.title }}"
+          description: |
+            **저장소**: ${{ github.repository }}
+            **작성자**: ${{ github.actor }}
+          color: 0xFEE75C
+          username: "Harness Bot"
+          url: ${{ github.event.issue.html_url }}
+
+  # ── 릴리즈 알림 ────────────────────────────────────────────
+  notify-release:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord 릴리즈 알림
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "🚀 릴리즈: ${{ github.event.release.tag_name }}"
+          description: |
+            **저장소**: ${{ github.repository }}
+            **태그**: `${{ github.event.release.tag_name }}`
+            **제목**: ${{ github.event.release.name }}
+          color: 0x57F287
+          username: "Harness Bot"
+          url: ${{ github.event.release.html_url }}
+
+  # ── CI 실패 알림 ────────────────────────────────────────────
+  notify-workflow-fail:
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord CI 실패 알림
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          title: "❌ CI 실패: ${{ github.event.workflow_run.name }}"
+          description: |
+            **저장소**: ${{ github.repository }}
+            **브랜치**: `${{ github.event.workflow_run.head_branch }}`
+            **트리거**: ${{ github.event.workflow_run.event }}
+          color: 0xED4245
+          username: "Harness Bot"
+          url: ${{ github.event.workflow_run.html_url }}

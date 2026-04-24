@@ -1,0 +1,131 @@
+name: 자동 문서화 & 주간 리포트
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**.py"
+      - "**.js"
+      - "**.ts"
+  schedule:
+    - cron: "0 9 * * MON"   # 매주 월요일 오전 9시 (UTC)
+  workflow_dispatch:          # 수동 실행 가능
+
+jobs:
+  # ── 코드 변경 시 자동 CHANGELOG 생성 ─────────────────────
+  update-changelog:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install anthropic python-dotenv --break-system-packages
+
+      - name: Generate CHANGELOG entry (Gemma via Claude fallback)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python - <<'EOF'
+          import anthropic, subprocess, os, datetime
+
+          # 최근 커밋 메시지 수집
+          result = subprocess.run(
+              ["git", "log", "--oneline", "-10"],
+              capture_output=True, text=True
+          )
+          commits = result.stdout.strip()
+
+          client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+          msg = client.messages.create(
+              model="claude-haiku-4-5-20251001",  # 가벼운 작업이라 Haiku 사용
+              max_tokens=512,
+              messages=[{
+                  "role": "user",
+                  "content": f"다음 커밋들을 보고 간결한 CHANGELOG 항목을 작성해주세요 (한국어):\n\n{commits}"
+              }]
+          )
+          entry = msg.content[0].text
+          today = datetime.date.today().strftime("%Y-%m-%d")
+
+          with open("CHANGELOG.md", "a", encoding="utf-8") as f:
+              f.write(f"\n\n## [{today}]\n{entry}\n")
+
+          print("CHANGELOG 업데이트 완료")
+          EOF
+
+      - name: Commit CHANGELOG
+        run: |
+          git config user.name "Harness Bot"
+          git config user.email "bot@harness-engineering.dev"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "docs: CHANGELOG 자동 업데이트 [skip ci]"
+          git push
+
+  # ── 주간 리포트 생성 및 Discord 전송 ────────────────────
+  weekly-report:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install anthropic httpx --break-system-packages
+
+      - name: Generate weekly report
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python - <<'EOF'
+          import anthropic, subprocess, os, httpx, datetime
+
+          # 지난 7일 커밋
+          result = subprocess.run(
+              ["git", "log", "--oneline", "--since=7 days ago"],
+              capture_output=True, text=True
+          )
+          commits = result.stdout.strip() or "이번 주 커밋 없음"
+
+          client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+          msg = client.messages.create(
+              model="claude-haiku-4-5-20251001",
+              max_tokens=800,
+              messages=[{
+                  "role": "user",
+                  "content": f"다음 주간 커밋 내역을 팀이 읽기 좋은 주간 리포트로 작성해주세요 (한국어, Markdown):\n\n{commits}"
+              }]
+          )
+          report = msg.content[0].text
+          today = datetime.date.today().strftime("%Y-%m-%d")
+
+          # Discord 전송
+          webhook = os.environ.get("DISCORD_WEBHOOK_URL")
+          if webhook:
+              httpx.post(webhook, json={
+                  "username": "Harness Bot",
+                  "embeds": [{
+                      "title": f"📊 주간 리포트 ({today})",
+                      "description": report[:1800],
+                      "color": 0x5865F2,
+                      "footer": {"text": "Harness Engineering | 자동 생성"}
+                  }]
+              }, timeout=10)
+              print("주간 리포트 Discord 전송 완료")
+          EOF

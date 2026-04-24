@@ -1,0 +1,34 @@
+{
+  "name": "claude-project-agent",
+  "version": "1.0.0",
+  "description": "Claude API를 사용하는 자동 프로젝트 개선 에이전트",
+  "main": "project-agent.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node project-agent.js",
+    "analyze": "node project-agent.js --project ./ --improve code-quality",
+    "improve:docs": "node project-agent.js --project ./ --improve documentation",
+    "improve:tests": "node project-agent.js --project ./ --improve testing",
+    "improve-and-commit": "node project-agent.js --project ./ --improve code-quality --commit",
+    "improve-and-push": "node project-agent.js --project ./ --improve code-quality --commit --push"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "agent",
+    "automation",
+    "code-improvement"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.28.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "eslint": "^8.56.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
