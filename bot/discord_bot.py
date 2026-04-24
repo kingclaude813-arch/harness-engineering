@@ -50,6 +50,7 @@ def get_gh() -> GitHubManager:
     return gh
 
 
+
 # ── 색상 상수 ─────────────────────────────────────────────────
 COLOR_OK    = 0x57F287   # 초록
 COLOR_INFO  = 0x5865F2   # 파랑
