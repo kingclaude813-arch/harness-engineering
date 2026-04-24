@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🚀 Harness Engineering
 
 > AI 기반 자동화 엔지니어링 허브 — Claude + Gemma + GitHub + Discord
@@ -141,3 +142,7 @@ harness-engineering/
 ---
 
 마지막 업데이트: 2026-04-21
+=======
+# harness-engineering
+🚀 AI 기반 자동화 엔지니어링 허브 (Claude + Gemma + GitHub + Discord)
+>>>>>>> 2f628e4edada149bede406569bdea27f8319fb33
